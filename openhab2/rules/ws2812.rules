@@ -1,3 +1,5 @@
+var max_brightness = 80
+
 var state_brightness = 0
 var state_state = "OFF"
 var state_color_r = 0
@@ -27,7 +29,9 @@ then
 
 
             var b = (((WS28xx_Strip.state as HSBType).brightness * 2.55) as Number).intValue
-            if (b > 40) b = 80
+
+            // limit max brightness (brightness is always 255... fixme)
+            if (b > max_brightness) b = max_brightness
             state_brightness = b
 
             // auto enable on color set:
@@ -58,4 +62,5 @@ then
             publish("local",  "ws2812/flur/set", json)
       }
 
-en
+end
+
