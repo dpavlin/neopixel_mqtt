@@ -47,7 +47,7 @@ cd /opt/neopixel_mqtt
 chmod +x app.py
 
 sudo su
-cp neopixel.service /etc/systemd/system
+cp neopixel_mqtt.service /etc/systemd/system
 systemctl enable neopixel.service
 systemctl start neopixel.service
 ```
