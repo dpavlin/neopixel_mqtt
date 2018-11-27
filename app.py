@@ -3,6 +3,8 @@
 import paho.mqtt.client as mqtt
 import time
 import json
+import sys
+
 from jsonschema import validate
 from jsonschema import exceptions
 from uuid import getnode as get_mac
@@ -10,9 +12,13 @@ from lib.neo_pixel_string import *
 from random import *
 
 # LED strip configuration:
-LED_COUNT      = 8      # Number of LED pixels.
-LED_PIN        = 18      # GPIO pin connected to the pixels (must support PWM!).
-BROKER_ADDRESS = "10.0.0.100"        # broker.mqttdashboard.com
+LED_COUNT      = 48      # Number of LED pixels.
+LED_PIN        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
+LED_FREQ_HZ    = 800000  # LED signal frequency in hertz (usually 800khz)
+
+
+
+BROKER_ADDRESS = "localhost"        # broker.mqttdashboard.com
 BROKER_PORT = 1883                 # 1883
 QOS_STATE_PUBLISH = 1
     # At most once (0)
@@ -42,6 +48,7 @@ full_state_schema = {
 }
 
 neopixelstring = None
+topic = "none"
 
 def on_connect(client, userdata, flags, rc):
     m = "Connected flags" + str(flags) + "result code " \
@@ -58,6 +65,7 @@ def on_message_full_state(client, userdata, message):
         data = json.loads(json_message)
         validate(data, full_state_schema)
         if (data.has_key('state')):
+            print("got state " + data['state'])
             if (data['state'] == 'ON'):
                 neopixelstring.all_on()
             else:
@@ -105,7 +113,7 @@ def publish_state(client):
         }
     }
 
-    (status, mid) = client.publish("saito/bed/neopixels", json.dumps(json_state), \
+    (status, mid) = client.publish(topic, json.dumps(json_state), \
         QOS_STATE_PUBLISH, RETAIN_STATE_PUBLISH)
 
     if status != 0:
@@ -116,16 +124,25 @@ if __name__ == '__main__':
     neopixelstring = NeoPixelString(LED_COUNT, LED_PIN)
     mac = get_mac()
 
+    if (len(sys.argv) != 2):
+         print("usage: " + sys.argv[0] + " <topic>\n")
+         sys.exit(0)
+
+    topic = sys.argv[1]
+    topic_set = topic + "/set"
+    print("> using topic '"+topic+"'")
+    print("> subscribing to '" + topic_set + "'")
+
     client1 = mqtt.Client(str(mac) + "-python_client")
     client1.on_connect = on_connect
 
     # Home Assistant compatible
-    client1.message_callback_add("saito/bed/neopixels/set", on_message_full_state)
+    client1.message_callback_add(topic_set, on_message_full_state)
     time.sleep(1)
 
     client1.connect(BROKER_ADDRESS, BROKER_PORT)
     client1.loop_start()
-    client1.subscribe("saito/bed/neopixels/set")
+    client1.subscribe(topic_set)
 
     justoutofloop = False
     print ('Press Ctrl-C to quit.')
@@ -144,7 +161,7 @@ if __name__ == '__main__':
                neopixelstring.theaterChase(Color(randint(0,127), randint(0,127), randint(0,127)))
         if not loopflag and justoutofloop:
             justoutofloop = False
-            client1.publish("saito/bed/neopixels/set", json_message, 0, False)
+            client1.publish(topic, json_message, 0, False)
         time.sleep(.1)
 
     # This should happen but it doesnt because CTRL-C kills process.

@@ -1,0 +1,61 @@
+var state_brightness = 0
+var state_state = "OFF"
+var state_color_r = 0
+var state_color_g = 0
+var state_color_b = 0
+
+
+rule "WSxx Startup"
+when
+    System started
+then
+    // init defaults:
+end
+
+
+
+rule "WSxx Change"
+when
+     Item WS28xx_Strip received command
+then
+      if (receivedCommand instanceof HSBType)
+      {
+
+            state_color_r = (((WS28xx_Strip.state as HSBType).red * 2.55) as Number).intValue
+            state_color_g = (((WS28xx_Strip.state as HSBType).green * 2.55) as Number).intValue
+            state_color_b = (((WS28xx_Strip.state as HSBType).blue * 2.55) as Number).intValue
+
+
+            var b = (((WS28xx_Strip.state as HSBType).brightness * 2.55) as Number).intValue
+            if (b > 40) b = 80
+            state_brightness = b
+
+            // auto enable on color set:
+            state_state = "ON"
+
+            if (state_state == "ON"){
+                var json = "{\"brightness\" : " + state_brightness +  
+                  ", \"color\" : { "+ 
+                  "\"r\" : " + state_color_r + ", " + 
+                  "\"g\" : " + state_color_g + ", " + 
+                  "\"b\" : " + state_color_b + "}}";
+                 publish("local",  "ws2812/flur/set", json)
+            }
+
+      }else if (receivedCommand == ON){
+            //logInfo("WS Status",  "ON")
+            state_state = "ON"
+            var json = "{\"brightness\" : " + state_brightness +
+              ", \"state\" : \"" + state_state +
+              "\", \"color\" : { "+
+              "\"r\" : " + state_color_r + ", " +
+              "\"g\" : " + state_color_g + ", " +
+              "\"b\" : " + state_color_b + "}}";
+            publish("local",  "ws2812/flur/set", json)
+      }else if (receivedCommand == OFF){
+            state_state = "OFF"
+            var json = "{\"state\" : \"" + state_state + "\"}"
+            publish("local",  "ws2812/flur/set", json)
+      }
+
+en

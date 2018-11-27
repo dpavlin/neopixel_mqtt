@@ -1,7 +1,7 @@
-# Saito MQTT NeoPixel Bed
+# Raspberry PI NeoPixel 2 mqtt bridge
 
 Very simple mqtt client app in Python that allows control of NeoPixel ring
-attached to the my kids bed.
+using mqtt
 
 Makes use of Jeremy Garffs neopixel lib for the Rpi. More info at:
 
@@ -31,64 +31,19 @@ sudo pip install paho-mqtt
 
 ## Hardware
 
-Currently library defaults to GPIO18 (pin 12) on http://www.raspberry-pi-geek.com/howto/GPIO-Pinout-Rasp-Pi-1-Model-B-Rasp-Pi-2-Model-B
+Currently library defaults to GPIO10 
 
-## Home Assistant
+## OPENHAB2
 
-Just add an MQTT JSON Light with following config:
+see openhab2 directory for basic examples
 
-```
-# Enable mqtt
-mqtt:
-  broker: xxxxxxxxxxxxx
-  port: 8000
-  client_id: xxxxxxxxxxxxxxxxx
-  keepalive: 60
-
-# Example configuration.yaml entry
-light:
-  platform: mqtt_json
-  name: "Saito RGB Light"
-  command_topic: "saito/bed/neopixels/set"
-  state_topic: "saito/bed/neopixels"
-  brightness: true
-  rgb: true
-  effect: true
-  effect_list: [rainbow, rainbowcycle, theaterchaserainbow, colorwipe, theaterchase]
-```
-
-and you are good to go.
-
-State and commands are passed using json:
-
-```json
-{
-  "brightness": 255,
-  "color": {
-    "g": 255,
-    "b": 255,
-    "r": 255
-  },
-  "effect": "rainbow",
-  "transition": 2,
-  "state": "ON"
-}
-```
 
 ## Autostart on Raspberry Pi
 
-Just use pm2 to start the script
+using systemd:
 
 ```shell
-sudo su
-pm2 startup
-pm2 start app.py --name saito_bed_neopixels
-pm2 save
-```
-
-Or systemd
-
-```shell
+cd /opt/neopixel_mqtt
 chmod +x app.py
 
 sudo su
