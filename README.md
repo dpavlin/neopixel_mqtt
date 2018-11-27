@@ -1,7 +1,9 @@
-# Raspberry PI NeoPixel 2 mqtt bridge
+# Raspberry PI NeoPixel to mqtt bridge
 
 Very simple mqtt client app in Python that allows control of NeoPixel ring
-using mqtt
+using mqtt.
+
+based on https://github.com/BioBoost/saito_mqtt_bed_neopixels
 
 Makes use of Jeremy Garffs neopixel lib for the Rpi. More info at:
 
@@ -48,6 +50,6 @@ chmod +x app.py
 
 sudo su
 cp neopixel_mqtt.service /etc/systemd/system
-systemctl enable neopixel.service
-systemctl start neopixel.service
+systemctl enable neopixel_mqtt.service
+systemctl start neopixel_mqtt.service
 ```
