@@ -113,13 +113,19 @@ def on_message_full_state(client, userdata, message):
     except ValueError:
         print "Invalid json string"
 
+# position of LED used for boiler
+boiler_pos = 0
+
 def on_message_boiler(client, userdata, message):
+    global boiler_pos
     val = int(message.payload.decode("utf-8"))
     print "on_message_boiler received: ", val
     col = Color(0,255,0) # off g r b
     if (val == 0):
                 col = Color(0,0,128) # on g r b
-    neopixelstring.set_i_color(1, col)
+    neopixelstring.set_i_color(boiler_pos, Color(0,0,0))
+    boiler_pos = ( boiler_pos + 1 ) % LED_COUNT
+    neopixelstring.set_i_color(boiler_pos, col)
 
 
 def publish_state(client):
