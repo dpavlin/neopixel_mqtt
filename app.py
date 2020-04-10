@@ -12,13 +12,13 @@ from lib.neo_pixel_string import *
 from random import *
 
 # LED strip configuration:
-LED_COUNT      = 48      # Number of LED pixels.
-LED_PIN        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
+LED_COUNT      = 8      # Number of LED pixels.
+LED_PIN        = 18      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
 LED_FREQ_HZ    = 800000  # LED signal frequency in hertz (usually 800khz)
 
 
 
-BROKER_ADDRESS = "localhost"        # broker.mqttdashboard.com
+BROKER_ADDRESS = "rpi2"        # broker.mqttdashboard.com
 BROKER_PORT = 1883                 # 1883
 QOS_STATE_PUBLISH = 1
     # At most once (0)
@@ -35,6 +35,7 @@ full_state_schema = {
         "state" : {"enum" : ["ON", "OFF"]},
         "effect" : {"enum" : ["rainbow", "rainbowcycle", "theaterchaserainbow", "colorwipe", "theaterchase"]},
         "brightness" : {"type": "number", "minimum": 0, "maximum": 255 },
+        "i_hexcolor": {"type": "string", "minimum": 0, "maximum": 10 },
         "color": {
             "type" : "object",
             "properties" : {
@@ -54,6 +55,11 @@ def on_connect(client, userdata, flags, rc):
     m = "Connected flags" + str(flags) + "result code " \
         + str(rc) + "client1_id " + str(client)
     print(m)
+
+def hex2Color(hexcode):
+    rgb = tuple(map(ord,hexcode[1:].decode('hex')))
+    print("rgb=",rgb)
+    return Color(rgb[0],rgb[1],rgb[2])
 
 # This is an interface that is compatible with Home Assistant MQTT JSON Light
 def on_message_full_state(client, userdata, message):
@@ -78,6 +84,11 @@ def on_message_full_state(client, userdata, message):
             # For some reason we need to switch r and g. Don't get it
             color = Color(data['color']['g'], data['color']['r'], data['color']['b'])
             neopixelstring.set_color(color)
+ 
+        if (data.has_key('i_hexcolor')):
+            i, hex_color = data['i_hexcolor'].split(':',1)
+            print("i:",i," ",hex_color)
+            neopixelstring.set_i_color(int(i), hex2Color(hex_color))
 
         if (data.has_key('effect')):
             loopflag = True
@@ -101,6 +112,15 @@ def on_message_full_state(client, userdata, message):
         print "Message failed validation"
     except ValueError:
         print "Invalid json string"
+
+def on_message_boiler(client, userdata, message):
+    val = int(message.payload.decode("utf-8"))
+    print "on_message_boiler received: ", val
+    col = Color(0,255,0) # off g r b
+    if (val == 0):
+                col = Color(0,0,128) # on g r b
+    neopixelstring.set_i_color(1, col)
+
 
 def publish_state(client):
     json_state = {
@@ -138,11 +158,14 @@ if __name__ == '__main__':
 
     # Home Assistant compatible
     client1.message_callback_add(topic_set, on_message_full_state)
+    topic_boiler = 'stat/boiler/d';
+    client1.message_callback_add(topic_boiler, on_message_boiler)
     time.sleep(1)
 
     client1.connect(BROKER_ADDRESS, BROKER_PORT)
     client1.loop_start()
     client1.subscribe(topic_set)
+    client1.subscribe(topic_boiler)
 
     justoutofloop = False
     print ('Press Ctrl-C to quit.')

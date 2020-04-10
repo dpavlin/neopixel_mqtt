@@ -36,6 +36,10 @@ class NeoPixelString:
 			self.strip.setPixelColor(i, color)
 		self.strip.show()
 
+	def set_i_color(self, i, color):
+		self.strip.setPixelColor(i, color)
+		self.strip.show()
+
 	def all_off(self):
 		keep_color = self.color
 		self.set_color(Color(0, 0, 0))
