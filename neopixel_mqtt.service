@@ -1,10 +1,10 @@
 [Unit]
 Description=Neopixel MQTT bridge 
-Wants=network.target mosquitto.service
-After=network.target mosquitto.service
+Wants=network.target
+After=network.target
 
 [Service]
-ExecStart=/opt/neopixel_mqtt/app.py ws2812/flur
+ExecStart=/home/pi/neopixel_mqtt/app.py /home/pi/neopixel_mqtt
 Restart=always
 
 [Install]
