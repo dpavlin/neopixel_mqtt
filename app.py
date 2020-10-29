@@ -127,6 +127,32 @@ def on_message_boiler(client, userdata, message):
     boiler_pos = ( boiler_pos + 1 ) % LED_COUNT
     neopixelstring.set_i_color(boiler_pos, col)
 
+def on_message_air(client, userdata, message):
+    val = float(message.payload.decode("utf-8"))
+    print "on_message_air", message.topic," = ", val
+    offset=1
+    if (message.topic == 'air/mh-z19b/co2'):
+        offset=2
+        col = Color(64,0,0) # off g r b
+        if (val < 500):
+                    col = Color(64,64,0) # on g r b
+        elif (val < 1000):
+                    col = Color(128 - int(val / 1000 * 128),int(val / 1000 * 128),0) # on g r b
+        elif (val < 1500):
+                    col = Color(0,int(val / 1500 * 128),int(val / 1500 * 64)) # on g r b
+        else:
+                    col = Color(0,32,0) # on g r b
+    elif (message.topic == 'air/zph02/pm25'):
+        offset=4
+        col = Color(32,0,0) # off g r b
+        if (val > 5):
+            col = Color(0,64,0) # off g r b
+    else:
+        col = Color(0,255,0) # on g r b
+                
+    neopixelstring.set_i_color( (boiler_pos + offset)     % LED_COUNT, Color(0,0,0))
+    neopixelstring.set_i_color( (boiler_pos + offset + 1) % LED_COUNT, col)
+
 
 def publish_state(client):
     json_state = {
@@ -166,12 +192,15 @@ if __name__ == '__main__':
     client1.message_callback_add(topic_set, on_message_full_state)
     topic_boiler = 'stat/boiler/d';
     client1.message_callback_add(topic_boiler, on_message_boiler)
-    time.sleep(1)
+    topic_air = 'air/#'
+    client1.message_callback_add(topic_air, on_message_air)
+    #time.sleep(1)
 
     client1.connect(BROKER_ADDRESS, BROKER_PORT)
     client1.loop_start()
     client1.subscribe(topic_set)
     client1.subscribe(topic_boiler)
+    client1.subscribe(topic_air)
 
     justoutofloop = False
     print ('Press Ctrl-C to quit.')
