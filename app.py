@@ -137,9 +137,9 @@ def on_message_air(client, userdata, message):
         offset=2
         col = Color(64,0,0) # off g r b
         if (val < 500):
-                    col = Color(64,64,0) # on g r b
+                    col = Color(64,0,0) # on g r b
         elif (val < 1000):
-                    col = Color(128 - int(val / 1000 * 128),int(val / 1000 * 128),0) # on g r b
+                    col = Color(int(val / 1000 * 64),int(val / 1000 * 128),0) # on g r b
         elif (val < 1500):
                     col = Color(0,int(val / 1500 * 128),int(val / 1500 * 64)) # on g r b
         else:
@@ -147,8 +147,14 @@ def on_message_air(client, userdata, message):
     elif (message.topic == 'air/zph02/pm25'):
         offset=4
         col = Color(32,0,0) # off g r b
-        if (val > 5):
-            col = Color(0,64,0) # off g r b
+        if (val < 100):
+            col = Color(int(val / 100 * 64),0,0) # off g r b
+        elif ( val < 500 ):
+            col = Color(64-int((val - 100) / 400 * 64),int((val - 100) / 400 * 64),0) # off g r b
+        else:
+            if ( val > 1000 ):
+                val = 1000
+            col = Color(0,int(val / 1000 * 255),0) # off g r b
     else:
         col = Color(0,255,0) # on g r b
                 
