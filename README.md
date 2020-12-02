@@ -53,3 +53,12 @@ cp neopixel_mqtt.service /etc/systemd/system
 systemctl enable neopixel_mqtt.service
 systemctl start neopixel_mqtt.service
 ```
+
+## testing
+
+Simulate tasmota power events from switch:
+
+```shell
+mosquitto_pub -h rpi2 -t 'stat/ir/POWER' -m ON
+mosquitto_pub -h rpi2 -t 'stat/ir/POWER' -m OFF
+```

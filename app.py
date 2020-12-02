@@ -127,6 +127,8 @@ def on_message_boiler(client, userdata, message):
     boiler_pos = ( boiler_pos + 1 ) % LED_COUNT
     neopixelstring.set_i_color(boiler_pos, col)
 
+    neopixelstring.set_i_color( (boiler_pos + 1) % LED_COUNT, door_color)
+
 def on_message_air(client, userdata, message):
     val = float(message.payload.decode("utf-8"))
     print "on_message_air", message.topic," = ", val
@@ -152,6 +154,42 @@ def on_message_air(client, userdata, message):
                 
     neopixelstring.set_i_color( (boiler_pos + offset)     % LED_COUNT, Color(0,0,0))
     neopixelstring.set_i_color( (boiler_pos + offset + 1) % LED_COUNT, col)
+
+global door_color
+door_color = Color(0,0,0) # off g r b
+
+def on_message_sensor(client, userdata, message):
+    json_message = str(message.payload.decode("utf-8"))
+    print("message received: ", json_message)
+
+    try:
+        data = json.loads(json_message)
+        print("data=", data);
+        if (data.has_key('Switch1')):
+
+            col = Color(0,0,0) # off g r b
+
+            if (data['Switch1'] == 'ON'): # door open
+                col = Color(255,255,0) # off g r b
+            if (data['Switch1'] == 'OFF'): # door closed
+                col = Color(64,0,64) # off g r b
+
+            global door_color
+            door_color = col
+            print("door color=", door_color)
+                
+    except exceptions.ValidationError:
+        print "Message failed validation"
+    except ValueError:
+        print "Invalid json string"
+
+def on_message_sensor_power(client, userdata, message):
+    val = message.payload.decode("utf-8")
+    print("on_message_sensor_power", val)
+    col = Color(255,0,255) # off g r b
+    if (val == 'ON'):
+        col = Color(0,255,255) # off g r b
+    neopixelstring.set_i_color( (boiler_pos + 1) % LED_COUNT, col)
 
 
 def publish_state(client):
@@ -194,6 +232,10 @@ if __name__ == '__main__':
     client1.message_callback_add(topic_boiler, on_message_boiler)
     topic_air = 'air/#'
     client1.message_callback_add(topic_air, on_message_air)
+    topic_sensor = 'tele/ir/SENSOR'
+    client1.message_callback_add(topic_sensor, on_message_sensor)
+    topic_sensor_power = 'stat/ir/POWER'
+    client1.message_callback_add(topic_sensor_power, on_message_sensor_power)
     #time.sleep(1)
 
     client1.connect(BROKER_ADDRESS, BROKER_PORT)
@@ -201,6 +243,8 @@ if __name__ == '__main__':
     client1.subscribe(topic_set)
     client1.subscribe(topic_boiler)
     client1.subscribe(topic_air)
+    client1.subscribe(topic_sensor)
+    client1.subscribe(topic_sensor_power)
 
     justoutofloop = False
     print ('Press Ctrl-C to quit.')
