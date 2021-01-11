@@ -11,6 +11,8 @@ from uuid import getnode as get_mac
 from lib.neo_pixel_string import *
 from random import *
 
+from colorsys import hsv_to_rgb
+
 # LED strip configuration:
 LED_COUNT      = 8      # Number of LED pixels.
 LED_PIN        = 18      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
@@ -61,6 +63,17 @@ def hex2Color(hexcode):
     print("rgb=",rgb)
     return Color(rgb[0],rgb[1],rgb[2])
 
+def set_i_color(i, color):
+    r = (color & 0xff0000) >> 16
+    g = (color & 0xff00) >> 8
+    b = (color & 0xff)
+    r = int(r * brightness)
+    g = int(g * brightness)
+    b = int(b * brightness)
+    #print('set_i_color',i,hex(color),hex(r),hex(g),hex(b),brightness)
+    neopixelstring.set_i_color(i, Color(r,g,b))
+
+
 # This is an interface that is compatible with Home Assistant MQTT JSON Light
 def on_message_full_state(client, userdata, message):
     global json_message, loopflag, animation
@@ -88,7 +101,7 @@ def on_message_full_state(client, userdata, message):
         if (data.has_key('i_hexcolor')):
             i, hex_color = data['i_hexcolor'].split(':',1)
             print("i:",i," ",hex_color)
-            neopixelstring.set_i_color(int(i), hex2Color(hex_color))
+            set_i_color(int(i), hex2Color(hex_color))
 
         if (data.has_key('effect')):
             loopflag = True
@@ -123,11 +136,11 @@ def on_message_boiler(client, userdata, message):
     col = Color(0,255,0) # off g r b
     if (val == 0):
                 col = Color(0,0,128) # on g r b
-    neopixelstring.set_i_color(boiler_pos, Color(0,0,0))
+    set_i_color(boiler_pos, Color(0,0,0))
     boiler_pos = ( boiler_pos + 1 ) % LED_COUNT
-    neopixelstring.set_i_color(boiler_pos, col)
+    set_i_color(boiler_pos, col)
 
-    neopixelstring.set_i_color( (boiler_pos + 1) % LED_COUNT, door_color)
+    set_i_color( (boiler_pos + 1) % LED_COUNT, door_color)
 
 def on_message_air(client, userdata, message):
     val = float(message.payload.decode("utf-8"))
@@ -135,31 +148,19 @@ def on_message_air(client, userdata, message):
     offset=1
     if (message.topic == 'air/mh-z19b/co2'):
         offset=2
-        col = Color(64,0,0) # off g r b
-        if (val < 500):
-                    col = Color(64,0,0) # on g r b
-        elif (val < 1000):
-                    col = Color(int(val / 1000 * 64),int(val / 1000 * 128),0) # on g r b
-        elif (val < 1500):
-                    col = Color(0,int(val / 1500 * 128),int(val / 1500 * 64)) # on g r b
-        else:
-                    col = Color(0,32,0) # on g r b
+        c = hsv_to_rgb(0.333 - ((val - 400) / 1000 * 0.333),1,1)
+        print("co2 c = ",c)
+        col = Color(int(c[1] * 255),int(c[0] * 255),int(c[2] * 255))
     elif (message.topic == 'air/zph02/pm25'):
         offset=4
-        col = Color(32,0,0) # off g r b
-        if (val < 100):
-            col = Color(int(val / 100 * 64),0,0) # off g r b
-        elif ( val < 500 ):
-            col = Color(64-int((val - 100) / 400 * 64),int((val - 100) / 400 * 64),0) # off g r b
-        else:
-            if ( val > 1000 ):
-                val = 1000
-            col = Color(0,int(val / 1000 * 255),0) # off g r b
+        c = hsv_to_rgb((val / 30),1,1)
+        print("zph02 pm25 c = ",c)
+        col = Color(int(c[1] * 255),int(c[0] * 255),int(c[2] * 255))
     else:
         col = Color(0,255,0) # on g r b
                 
-    neopixelstring.set_i_color( (boiler_pos + offset)     % LED_COUNT, Color(0,0,0))
-    neopixelstring.set_i_color( (boiler_pos + offset + 1) % LED_COUNT, col)
+    set_i_color( (boiler_pos + offset)     % LED_COUNT, Color(0,0,0))
+    set_i_color( (boiler_pos + offset + 1) % LED_COUNT, col)
 
 global door_color
 door_color = Color(0,0,0) # off g r b
@@ -195,8 +196,25 @@ def on_message_sensor_power(client, userdata, message):
     col = Color(255,0,255) # off g r b
     if (val == 'ON'):
         col = Color(0,255,255) # off g r b
-    neopixelstring.set_i_color( (boiler_pos + 1) % LED_COUNT, col)
+    set_i_color( (boiler_pos + 1) % LED_COUNT, col)
 
+global brightness
+brightness=0.5
+
+def on_message_light(client, userdata, message):
+    val = message.payload.decode("utf-8")
+    val = float(val)
+    print("on_message_light",val)
+    if ( val > 300 ):
+        val = 300
+    val = (val / 300)
+    print("on_message_light brightness scaled",val)
+    global brightness
+    brightness = ( ( brightness * 0.75 ) + ( val * 0.25 ) )
+    if ( brightness < 0.1 ):
+        brightness = 0.1
+    print("brightness", brightness)
+    #neopixelstring.set_brightness( int(50 * brightness) )
 
 def publish_state(client):
     json_state = {
@@ -242,6 +260,8 @@ if __name__ == '__main__':
     client1.message_callback_add(topic_sensor, on_message_sensor)
     topic_sensor_power = 'stat/ir/POWER'
     client1.message_callback_add(topic_sensor_power, on_message_sensor_power)
+    topic_sensor_light = 'grove/light'
+    client1.message_callback_add(topic_sensor_light, on_message_light)
     #time.sleep(1)
 
     client1.connect(BROKER_ADDRESS, BROKER_PORT)
@@ -251,6 +271,7 @@ if __name__ == '__main__':
     client1.subscribe(topic_air)
     client1.subscribe(topic_sensor)
     client1.subscribe(topic_sensor_power)
+    client1.subscribe(topic_sensor_light)
 
     justoutofloop = False
     print ('Press Ctrl-C to quit.')
